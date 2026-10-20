@@ -104,11 +104,6 @@ dotnet build -p:DspDir="C:\Program Files (x86)\Steam\steamapps\common\Dyson Sphe
 - 调用 `PlanetTransport.SetStationStorage(stationId, storageIdx, itemId, max, localLogic, remoteLogic, player)` 写入上限，游戏内部会 clamp 到科技上限。
 - 用 `Slider.SetValueWithoutNotify` 刷新 UI，避免递归触发 `onValueChanged`。
 
-## 发布前检查
-
-- 把 `manifest.json` 的 `website_url` 改成 GitHub 仓库地址。
-- 如果要换 GUID，修改 `MaxStationPlugin.Guid`，并同步 README 里的配置文件名。
-- 不要把游戏本体的 `Assembly-CSharp.dll`、`UnityEngine.*.dll` 或反编译代码提交进仓库。
 
 ## License
 
