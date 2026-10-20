@@ -16,7 +16,7 @@
 
 ## 安装
 
-需要 BepInEx 5.4.x（DSP 是 Unity Mono 游戏）。
+需要 BepInEx 5.4.x。
 
 ### 从 Release 安装（推荐）
 
