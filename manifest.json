@@ -1,0 +1,7 @@
+{
+  "name": "MaxStation",
+  "version_number": "1.0.1",
+  "website_url": "https://github.com/Serein-YuFeng/DSP-MaxStation",
+  "description": "Ctrl+F7 or Ctrl+click a station slot slider to set every occupied slot's limit to max. 一键拉满物流站货物上限。",
+  "dependencies": []
+}
