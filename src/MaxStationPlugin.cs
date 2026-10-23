@@ -14,13 +14,16 @@ namespace MaxStation
     {
         public const string Guid = "com.maxstation.dsp";
         public const string Name = "MaxStation";
-        public const string Version = "1.0.1";
+        public const string Version = "1.0.2";
 
         internal static ConfigEntry<KeyboardShortcut> MaxAllKey;
         internal static ManualLogSource Log;
 
         private static readonly FieldInfo StorageUIsField =
             AccessTools.Field(typeof(UIStationWindow), "storageUIs");
+
+        private static readonly FieldInfo ControlPanelStorageUIsField =
+            AccessTools.Field(typeof(UIControlPanelStationInspector), "storageUIs");
 
         internal static bool Applying;
 
@@ -46,6 +49,13 @@ namespace MaxStation
                 return;
             }
 
+            UIControlPanelStationInspector inspector = GetControlPanelStationInspector();
+            if (inspector != null)
+            {
+                MaxAll(inspector);
+                return;
+            }
+
             UIStationWindow window = GetStationWindow();
             if (window != null && window.active)
             {
@@ -61,6 +71,28 @@ namespace MaxStation
             }
 
             return UIRoot.instance.uiGame.stationWindow;
+        }
+
+        internal static UIControlPanelStationInspector GetControlPanelStationInspector()
+        {
+            if (UIRoot.instance == null || UIRoot.instance.uiGame == null)
+            {
+                return null;
+            }
+
+            UIControlPanelWindow panel = UIRoot.instance.uiGame.controlPanelWindow;
+            if (panel == null || !panel.active)
+            {
+                return null;
+            }
+
+            UIControlPanelStationInspector inspector = panel.stationInspector;
+            if (inspector == null || !inspector.active || inspector.station == null)
+            {
+                return null;
+            }
+
+            return inspector;
         }
 
         internal static void MaxAll(UIStationWindow window)
@@ -139,6 +171,75 @@ namespace MaxStation
             }
         }
 
+        internal static void MaxAll(UIControlPanelStationInspector inspector)
+        {
+            if (Applying || inspector == null || inspector.transport == null || ControlPanelStorageUIsField == null)
+            {
+                return;
+            }
+
+            UIControlPanelStationStorage[] uis =
+                ControlPanelStorageUIsField.GetValue(inspector) as UIControlPanelStationStorage[];
+            if (uis == null || uis.Length == 0)
+            {
+                return;
+            }
+
+            StationComponent station = null;
+            int cap = 0;
+            for (int i = 0; i < uis.Length; i++)
+            {
+                if (IsValid(uis[i]))
+                {
+                    station = uis[i].station;
+                    cap = GetCap(uis[i]);
+                    break;
+                }
+            }
+
+            if (station == null || cap <= 0)
+            {
+                return;
+            }
+
+            Applying = true;
+            try
+            {
+                for (int index = 0; index < station.storage.Length; index++)
+                {
+                    StationStore store = station.storage[index];
+                    if (store.itemId <= 0 || store.max >= cap)
+                    {
+                        continue;
+                    }
+
+                    inspector.transport.SetStationStorage(
+                        station.id,
+                        index,
+                        store.itemId,
+                        cap,
+                        store.localLogic,
+                        store.remoteLogic,
+                        GameMain.mainPlayer);
+                }
+
+                for (int i = 0; i < uis.Length; i++)
+                {
+                    UIControlPanelStationStorage ui = uis[i];
+                    if (!IsValid(ui) || ui.station != station)
+                    {
+                        continue;
+                    }
+
+                    SetUiValue(ui.maxValueText, ui.maxSlider, cap);
+                }
+            }
+            finally
+            {
+                Applying = false;
+            }
+        }
+
         internal static void MaxOne(UIStationStorage ui)
         {
             if (Applying || !IsValid(ui) || ui.stationWindow == null || ui.stationWindow.transport == null)
@@ -180,6 +281,46 @@ namespace MaxStation
                 {
                     ui.maxSlider.SetValueWithoutNotify(cap / 100f);
                 }
+            }
+            finally
+            {
+                Applying = false;
+            }
+        }
+
+        internal static void MaxOne(UIControlPanelStationStorage ui)
+        {
+            if (Applying || !IsValid(ui) || ui.masterInspector == null || ui.masterInspector.transport == null)
+            {
+                return;
+            }
+
+            StationComponent station = ui.station;
+            StationStore store = station.storage[ui.index];
+            if (store.itemId <= 0)
+            {
+                return;
+            }
+
+            int cap = GetCap(ui);
+            if (cap <= 0 || store.max >= cap)
+            {
+                return;
+            }
+
+            Applying = true;
+            try
+            {
+                ui.masterInspector.transport.SetStationStorage(
+                    station.id,
+                    ui.index,
+                    store.itemId,
+                    cap,
+                    store.localLogic,
+                    store.remoteLogic,
+                    GameMain.mainPlayer);
+
+                SetUiValue(ui.maxValueText, ui.maxSlider, cap);
             }
             finally
             {
@@ -229,6 +370,65 @@ namespace MaxStation
 
             return (int)(ui.maxSlider.maxValue * 100f + 0.5f);
         }
+
+        internal static bool IsValid(UIControlPanelStationStorage ui)
+        {
+            return ui != null
+                && ui.station != null
+                && ui.station.storage != null
+                && ui.index >= 0
+                && ui.index < ui.station.storage.Length;
+        }
+
+        internal static UIControlPanelStationStorage FindStorageBySlider(
+            UIControlPanelStationInspector inspector,
+            Slider slider)
+        {
+            if (ControlPanelStorageUIsField == null || inspector == null || slider == null)
+            {
+                return null;
+            }
+
+            UIControlPanelStationStorage[] uis =
+                ControlPanelStorageUIsField.GetValue(inspector) as UIControlPanelStationStorage[];
+            if (uis == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < uis.Length; i++)
+            {
+                if (uis[i] != null && uis[i].maxSlider == slider)
+                {
+                    return uis[i];
+                }
+            }
+
+            return null;
+        }
+
+        internal static int GetCap(UIControlPanelStationStorage ui)
+        {
+            if (ui == null || ui.maxSlider == null)
+            {
+                return 0;
+            }
+
+            return (int)(ui.maxSlider.maxValue * 100f + 0.5f);
+        }
+
+        internal static void SetUiValue(Text text, Slider slider, int cap)
+        {
+            if (text != null)
+            {
+                text.text = cap.ToString();
+            }
+
+            if (slider != null)
+            {
+                slider.SetValueWithoutNotify(cap / 100f);
+            }
+        }
     }
 
     [HarmonyPatch(typeof(Slider), "OnPointerDown")]
@@ -254,29 +454,48 @@ namespace MaxStation
             }
 
             UIStationWindow window = MaxStationPlugin.GetStationWindow();
-            if (window == null || !window.active)
+            if (window != null && window.active)
             {
-                return true;
+                UIStationStorage target = MaxStationPlugin.FindStorageBySlider(window, __instance);
+                if (target != null)
+                {
+                    MaxStationPlugin.Log.LogInfo("Station slider click: " + (ctrl ? "max all" : "max one"));
+
+                    if (ctrl)
+                    {
+                        MaxStationPlugin.MaxAll(window);
+                    }
+                    else
+                    {
+                        MaxStationPlugin.MaxOne(target);
+                    }
+
+                    return false;
+                }
             }
 
-            UIStationStorage target = MaxStationPlugin.FindStorageBySlider(window, __instance);
-            if (target == null)
+            UIControlPanelStationInspector inspector = MaxStationPlugin.GetControlPanelStationInspector();
+            if (inspector != null)
             {
-                return true;
+                UIControlPanelStationStorage target = MaxStationPlugin.FindStorageBySlider(inspector, __instance);
+                if (target != null)
+                {
+                    MaxStationPlugin.Log.LogInfo("Control panel slider click: " + (ctrl ? "max all" : "max one"));
+
+                    if (ctrl)
+                    {
+                        MaxStationPlugin.MaxAll(inspector);
+                    }
+                    else
+                    {
+                        MaxStationPlugin.MaxOne(target);
+                    }
+
+                    return false;
+                }
             }
 
-            MaxStationPlugin.Log.LogInfo("Station slider click: " + (ctrl ? "max all" : "max one"));
-
-            if (ctrl)
-            {
-                MaxStationPlugin.MaxAll(window);
-            }
-            else
-            {
-                MaxStationPlugin.MaxOne(target);
-            }
-
-            return false;
+            return true;
         }
     }
 }

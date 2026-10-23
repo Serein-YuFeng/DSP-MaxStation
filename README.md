@@ -6,11 +6,13 @@
 
 ## 功能
 
-打开行星物流塔 / 星际物流塔的窗口后：
+打开行星物流塔 / 星际物流塔的窗口，或打开总控面板并选中一个物流站后：
 
 - **Ctrl + F7**：把所有已放置物品的槽位上限设为当前科技允许的最大值。
 - **Ctrl + 鼠标左键点击任意槽位的上限滑条**：同上，鼠标操作版。
 - **Alt + 鼠标左键点击某个槽位的上限滑条**：只把该槽位拉满。
+
+总控面板右侧的槽位列表同样支持以上三种操作。
 
 上限值取自游戏自己给滑条设置的最大值（建筑基础仓储 + 科技升级），不会超过游戏允许的范围。
 
@@ -92,7 +94,7 @@ dotnet build -p:DspDir="C:\Program Files (x86)\Steam\steamapps\common\Dyson Sphe
 ## 兼容性与限制
 
 - 适用游戏版本：**0.10.35**（Unity 2022.3.62f3c1，Assembly-CSharp 未混淆）。
-- 只处理**物流运输站窗口**。总控面板（Control Panel）里的槽位暂不支持。
+- 同时支持**物流运输站窗口**和**总控面板（Control Panel）**右侧的槽位列表。
 - 不新增物品/配方/建筑，不需要 DSPModSave；`StationStore.max` 是原版存档字段，改完会随原版存档保存。
 - 与 `StationAssistant`（双击改数值）功能不冲突：它改的是双击输入，本 mod 改的是 Ctrl/Alt + 点击和快捷键。
 - 如果装着 `SpaciousStations` 之类扩展槽位的 mod，本 mod 直接遍历 `StationComponent.storage`，所以超出原版 UI 数组的槽位也会被处理。
@@ -100,7 +102,8 @@ dotnet build -p:DspDir="C:\Program Files (x86)\Steam\steamapps\common\Dyson Sphe
 ## 实现要点
 
 - Harmony patch `Slider.OnPointerDown`，判断点中的是不是物流塔槽位的 `maxSlider`，再处理 Ctrl/Alt；这样点在滑条手柄上也能触发。
-- 通过 `AccessTools.Field` 拿 `UIStationWindow.storageUIs`（私有字段）。
+- 通过 `AccessTools.Field` 拿 `UIStationWindow.storageUIs` 和 `UIControlPanelStationInspector.storageUIs`（两者都是私有字段）。
+- 总控面板的槽位 UI 是 `UIControlPanelStationStorage`，通过其 `masterInspector.transport` 调用同一套 `SetStationStorage`。
 - 调用 `PlanetTransport.SetStationStorage(stationId, storageIdx, itemId, max, localLogic, remoteLogic, player)` 写入上限，游戏内部会 clamp 到科技上限。
 - 用 `Slider.SetValueWithoutNotify` 刷新 UI，避免递归触发 `onValueChanged`。
 
