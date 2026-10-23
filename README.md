@@ -14,7 +14,15 @@
 
 总控面板右侧的槽位列表同样支持以上三种操作。
 
-上限值取自游戏自己给滑条设置的最大值（建筑基础仓储 + 科技升级），不会超过游戏允许的范围。
+总控面板底部还提供三个范围按钮：
+
+- **当前星球拉满**：拉满当前所在星球上的所有物流站。
+- **当前星系拉满**：拉满当前所在星系内所有星球上的物流站。
+- **全星区拉满**：拉满所有已创建工厂星球上的物流站。
+
+范围操作会遍历目标范围内的物流站，忽略当前物品/状态/搜索筛选，并**跳过轨道采集器**。
+
+单站操作的上限取自游戏自己给滑条设置的最大值（建筑基础仓储 + 科技升级）。范围操作会把请求值交给游戏和其他扩容 mod 自行 clamp，因此不会把 SpaciousStations 等 mod 提高后的上限（例如 200000）压回原版。
 
 ## 安装
 
@@ -94,17 +102,19 @@ dotnet build -p:DspDir="C:\Program Files (x86)\Steam\steamapps\common\Dyson Sphe
 ## 兼容性与限制
 
 - 适用游戏版本：**0.10.35**（Unity 2022.3.62f3c1，Assembly-CSharp 未混淆）。
-- 同时支持**物流运输站窗口**和**总控面板（Control Panel）**右侧的槽位列表。
+- 同时支持**物流运输站窗口**、**总控面板（Control Panel）**右侧的槽位列表，以及总控面板底部的三个范围按钮。
+- 范围按钮只覆盖已创建工厂星球上的物流站；轨道采集器不纳入范围。
 - 不新增物品/配方/建筑，不需要 DSPModSave；`StationStore.max` 是原版存档字段，改完会随原版存档保存。
 - 与 `StationAssistant`（双击改数值）功能不冲突：它改的是双击输入，本 mod 改的是 Ctrl/Alt + 点击和快捷键。
-- 如果装着 `SpaciousStations` 之类扩展槽位的 mod，本 mod 直接遍历 `StationComponent.storage`，所以超出原版 UI 数组的槽位也会被处理。
+- 如果装着 `SpaciousStations` 之类扩展槽位的 mod，本 mod 直接遍历 `StationComponent.storage`，所以超出原版 UI 数组的槽位也会被处理；容量上限也由游戏和该 mod 共同钳制。
 
 ## 实现要点
 
 - Harmony patch `Slider.OnPointerDown`，判断点中的是不是物流塔槽位的 `maxSlider`，再处理 Ctrl/Alt；这样点在滑条手柄上也能触发。
 - 通过 `AccessTools.Field` 拿 `UIStationWindow.storageUIs` 和 `UIControlPanelStationInspector.storageUIs`（两者都是私有字段）。
 - 总控面板的槽位 UI 是 `UIControlPanelStationStorage`，通过其 `masterInspector.transport` 调用同一套 `SetStationStorage`。
-- 调用 `PlanetTransport.SetStationStorage(stationId, storageIdx, itemId, max, localLogic, remoteLogic, player)` 写入上限，游戏内部会 clamp 到科技上限。
+- 范围按钮遍历 `GameData.factories` 和 `PlanetFactory.transport.stationPool`，按 `planet.astroId` / `planet.star.astroId` 过滤；按钮克隆自总控面板的 `filterPanel.mainTypeButtons`。
+- 调用 `PlanetTransport.SetStationStorage(stationId, storageIdx, itemId, max, localLogic, remoteLogic, player)` 写入上限，游戏内部会 clamp 到真实上限；范围操作传入足够大的请求值，让 SpaciousStations 等 mod 的 clamp 生效。
 - 用 `Slider.SetValueWithoutNotify` 刷新 UI，避免递归触发 `onValueChanged`。
 
 

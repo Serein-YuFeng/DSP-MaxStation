@@ -46,7 +46,7 @@ $refArgs = $refs | ForEach-Object { '/reference:' + $_ }
 $source = Join-Path $root 'src\MaxStationPlugin.cs'
 $outDll = Join-Path $outDir 'MaxStation.dll'
 
-& $csc /nologo /target:library /langversion:5 "/out:$outDll" $refArgs $source
+& $csc /nologo /target:library /langversion:5 /codepage:65001 "/out:$outDll" $refArgs $source
 if ($LASTEXITCODE -ne 0) {
     throw "csc failed with exit code $LASTEXITCODE"
 }

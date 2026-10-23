@@ -1,7 +1,7 @@
 {
   "name": "MaxStation",
-  "version_number": "1.0.2",
+  "version_number": "1.0.3",
   "website_url": "https://github.com/Serein-YuFeng/DSP-MaxStation",
-  "description": "Ctrl+F7 或 Ctrl+点击槽位上限滑条，一键拉满物流站货物上限；支持物流站窗口和总控面板。",
+  "description": "Ctrl+F7 或 Ctrl+点击槽位上限滑条，一键拉满物流站货物上限；支持物流站窗口、总控面板，以及当前星球/星系/全星区范围批量拉满。",
   "dependencies": []
 }
